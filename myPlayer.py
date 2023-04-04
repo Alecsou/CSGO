@@ -7,9 +7,10 @@ Right now, this class contains the copy of the randomPlayer. But you have to cha
 
 import time
 import Goban 
-from random import choice
+import random
 from playerInterface import *
 import numpy as np
+from parce import pickOpening
 
 class myPlayer(PlayerInterface):
     ''' Example of a random player for the go. The only tricky part is to be able to handle
@@ -21,16 +22,27 @@ class myPlayer(PlayerInterface):
     def __init__(self):
         self._board = Goban.Board()
         self._mycolor = None
+        self._opening = pickOpening() 
+        self._decimalPoint = 0
+        self._initialDepth = 2
 
     def getPlayerName(self):
         return "CSGO"
+    
+    def heuristic(self,depth):
+        if (depth==0 or self._board.is_game_over()):
+            self._decimalPoint+=0.000000000000001
+            if self._mycolor==self._board._BLACK:
+                return self._board._nbBLACK  + self._board._capturedWHITE + self._decimalPoint
+            else:
+                return self._board._nbWHITE + self._board._capturedBLACK + self._decimalPoint
+        else:
+             return "NO_LEAF"
 
     def maxAB(self,alpha,beta,depth):
-        if (depth==0 or self._board.is_game_over()):
-            if self._mycolor==self._board._BLACK:
-                return self._board._nbBLACK
-            else:
-                return self._board._nbWHITE
+        heuristicResult = self.heuristic(depth)
+        if heuristicResult!="NO_LEAF":
+            return heuristicResult
         moves = self._board.legal_moves()
         for move in moves:
             self._board.push(move)
@@ -41,11 +53,9 @@ class myPlayer(PlayerInterface):
         return alpha
     
     def minAB(self,alpha,beta,depth):
-        if (depth==0 or self._board.is_game_over()):
-            if self._mycolor==self._board._BLACK:
-                return self._board._nbBLACK
-            else:
-                return self._board._nbWHITE
+        heuristicResult = self.heuristic(depth)
+        if heuristicResult!="NO_LEAF":
+            return heuristicResult
         moves = self._board.legal_moves()
         for move in moves:
             self._board.push(move)
@@ -62,6 +72,15 @@ class myPlayer(PlayerInterface):
                 return i
 
     def getPlayerMove(self):
+        if self._opening!=[]:
+            move=self._opening[0]
+            self._opening=self._opening[1:]
+            if Goban.Board.name_to_flat(move) in self._board.legal_moves() :
+                self._board.push(Goban.Board.name_to_flat(move)) # MOVE POTENTIELLEMENT ILLEGAL : A CORRIGER
+                return move # MOVE POTENTIELLEMENT ILLEGAL
+            else:
+                print("Opening became illegal, starting midgame")
+                self._opening=[]
         if self._board.is_game_over():
             return "PASS" 
         if self._board._lastPlayerHasPassed:
@@ -70,7 +89,7 @@ class myPlayer(PlayerInterface):
         movesPower = []
         for i in range(len(moves)):
             self._board.push(moves[i])
-            movesPower+=[self.maxAB(-100000,100000,2)]
+            movesPower+=[self.maxAB(-100000,100000,self._initialDepth)]
             self._board.pop()
         move=moves[self.indiceMax(movesPower)]
         print(movesPower)
