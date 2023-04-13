@@ -1,91 +1,78 @@
-Goban.py 
----------
+############### CSGO : Clearly Something GO Oriented ##################
 
-Fichier contenant les règles du jeu de GO avec les fonctions et méthodes pour parcourir (relativement) efficacement
-l'arbre de jeu, à l'aide de legal_moves() et push()/pop() comme vu en cours.
+Author : Alexandre Soulié
+Group : G1
 
-Ce fichier sera utilisé comme arbitre dans le tournoi. Vous avez maintenant les fonctions de score implantés dedans.
-Sauf problème, ce sera la methode result() qui donnera la vainqueur quand is_game_over() sera Vrai.
+##### Utilisation #####
 
-Vous avez un décompte plus précis de la victoire dans final_go_score()
+CSGO peut être utilisé dans les conditions de l'énoncé, sans paramètres préalables ni modifications à effectuer.
+Sont nécessaires comme modules externes de Python : 
 
-Pour vous aider à parcourir le plateau de jeu, si b est un Board(), vous pouvez avoir accès à la couleur de la pierre
-posée en (x,y) en utilisant b[Board.flatten((x,y))]
+> time, random, numpy
 
+Sont nécessaires comme fichiers supplémentaires : 
 
-GnuGo.py
---------
+> Goban.py, localGame.py, playerInterface.py, parce.py, games.json
 
-Fichier contenant un ensemble de fonctions pour communiquer avec gnugo. Attention, il faut installer correctement (et
-à part gnugo sur votre machine).  Je l'ai testé sur Linux uniquement mais cela doit fonctionner avec tous les autres
-systèmes (même s'ils sont moins bons :)).
+##### Résumé #####
 
+CSGO est une I.A. permettant de jouer au jeu de GO grâce au système de Goban.py .
+CSGO utilise un algorithme AlphaBeta à profondeur adaptative par rapport au temps de jeu restant à heuristique simple avec banque d'ouverture.
 
-starter-go.py
--------------
+##### Heuristique #####
 
-Exemples de deux développements aléatoires (utilisant legal_moves et push/pop). Le premier utilise legal_moves et le
-second weak_legal_moves, qui ne garanti plus que le coup aléatoire soit vraiment légal (à cause des Ko).
+L'heuristique proposée est très simple et basique. Lors du calcul de l'heuristique, selon la couleur de CSGO, on calcule son nombre de
+pierres à l'instant donné additioné avec le nombre de pierres capturées. Celà nous donne un entier positif qui sera notre heuristique.
+Le problème de cette heuristique dans un AlphaBeta est le suivant : les valeurs d'heuristique sont souvent probablement les mêmes.
+Ainsi, l'élagage d'AlphaBeta est réduit à néant, ce qui donne des performances difficilement acceptables. 
 
-La première chose à faire est probablement de 
+Ici intervient le premier choix : à chaque calcul d'heuristique, on choisit d'ajouter un flottant extrèmement petit (de l'ordre de 10^-15) croissant.
+Cela donne alors artificiellement un ordre aux heuristique, permettant un élagage un peu articiel de AlphaBeta.
 
+Cette technique à prouvé une efficacité de l'ordre de 50% lors de gros calculs:
 
-localGame.py
-------------
+AlphaBeta de profondeur 3 sans classement artificiel : ~750 secondes au tour 16
+AlphaBeta de profondeur 3 avec classement artificiel : ~500 secondes au tour 16
 
-Permet de lancer un match de myPlayer contre lui même, en vérifiant les coups avec une instanciation de Goban.py comme
-arbitre. Vous ne devez pas modifier ce fichier pour qu'il fonctionne, sans quoi je risque d'avoir des problèmes pour
-faire entrer votre IA dans le tournoi.
+L'effet sur la compétitivité de l'IA en ouverture semble minime, d'où l'adoption de cette solution.
 
+##### AlphaBeta #####
 
-playerInterface.py
-------------------
+L'algorithme principal est un AlphaBeta classique. Sa particularité est d'avoir une profondeur adaptative selon le temps qu'il reste à jouer.
 
-Classe abstraite, décrite dans le sujet, permettant à votre joueur d'implanter correctement les fonctions pour être
-utilisé dans localGame et donc, dans le tournoi. Attention, il faut bien faire attention aux coups internes dans Goban
-(appelés "flat") et qui sont utilisés dans legal_moves/weak_legal_moves et push/pop des coups externes qui sont
-utilisés dans l'interface (les named moves). En interne, un coup est un indice dans un tableau 1 dimension
--1, 0.._BOARDSIZE^2 et en externe (dans cette interface) les coups sont des chaines de caractères dans "A1", ..., "J9",
-"PASS". Il ne faut pas se mélanger les pinceaux.
+L'algorithme démarre par les 15 premiers tours qui sont pris à partir d'une banque d'ouverture. (15 coups de la même ouverture)
+Si un coup est illégal (déjà joué précedemment par l'opposant), l'I.A active le "Disturbed Opening Mode" et joue aléatoirement jusqu'au tour 16.
+Celà a pour but de vite procéder à l'ouverture avant de commencer les "vrais" calculs.
 
+Vient ensuite un AlphaBeta classique, de profondeur 2.
+Pour calculer la profondeur du prochain coup :
+Si le temps que l'on a pris pour jouer ce coup est assez court pour que les prochains coups que l'on puisse jouer potentiellement
+nous laissent encore la moitié du temps imparti à cet instant, on augmente la profondeur de 1 dans la limite d'une profondeur de 6.
 
-myPlayer.py
------------
+>>> if self._actualDepth < 6 and (2*turnTime*(81-(totalStones+1)))<= (30*60)-self._totalTime:
 
-Fichier que vous devrez modifier pour y mettre votre IA pour le tournoi. En l'état actuel, il contient la copie du
-joueur randomPlayer.py
+Si le temps que l'on a pris pour jouer ce coup est trop long a tel point que si on jouait potentiellementà cette vitesse tout les prochains coups, on
+dépasserait de 50% du temps imparti à cet instant, alors on diminue la profondeur de 1 dans la limite d'une profondeur de 2.
 
+>>> elif self._actualDepth > 2 and (turnTime*(81-(totalStones+1))) > 1.50*((30*60)-self._totalTime):
 
-randomPlayer.py
----------------
+On considère aussi deux modes de jeu important :
 
-Un joueur aléatoire que vous pourrez conserver tel quel
+## Critical Mode :
 
+Il s'active lorsqu'il ne reste plus de 60 secondes. On force alors un AlphaBeta de profondeur 2.
 
-gnugoPlayer.py
---------------
+## Ultra Critical Mode :
 
-Un joueur basé sur gnugo. Vous permet de vous mesurer à lui simplement.
+Il s'active lorsqu'il ne reste plus de 10 secondes. On force alors un AlphaBeta de profondeur 1.
 
+Avec ce modèle, plus le board est rempli, plus on parcours profondément l'arbre de jeu, ce qui nous rend bon en fin de partie.
+Il y a malheureusement un faille. Si on arrive en profondeur 6, mais qu'une pierre capture une grande partie des pierres adverses,
+alors le parcours sera extrèmement long puisque une branche sera extrèmement grande, ruinant le gain de temps.
+On effectue alors une vérification sur la première couche de l'arbre, pour vérifier qu'aucun des premiers moves ne capturera beaucoup d'adversaires.
+Si c'est le cas, on préfère alors une profondeur 3.
+Sinon, on continue.
 
-namedGame.py
-------------
-
-Permet de lancer deux joueurs différents l'un contre l'autre.
-Il attent en argument les deux modules des deux joueurs à importer.
-
-
-EXEMPLES DE LIGNES DE COMMANDES:
-================================
-
-python3 localGame.py
---> Va lancer un match myPlayer.py contre myPlayer.py
-
-python3 namedGame.py myPlayer randomPlayer
---> Va lancer un match entre votre joueur (NOIRS) et le randomPlayer
- (BLANC)
-
- python3 namedGame gnugoPlayer myPlayer
- --> gnugo (level 0) contre votre joueur (très dur à battre)
-
+Au pire des cas, un gros coup apparaitra en deuxième couche, mais avec un AlphaBeta de profondeur 6, cela laissera maintenant 4 couches au pire à calculer,
+ce qu'on estime raisonnable en fin de partie.
 
