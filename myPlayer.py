@@ -47,9 +47,9 @@ class myPlayer(PlayerInterface):
             captureDiff = self._board._capturedWHITE - self._board._capturedBLACK
             overallStatus = stoneDiff + captureDiff
             if self._mycolor==self._board._BLACK:
-                return overallStatus + self._decimalPoint # self._board._nbBLACK + self._board._capturedWHITE - self._board._nbWHITE - self._board._capturedBLACK
+                return overallStatus + (self._decimalPoint*random.randint(1,81)) # self._board._nbBLACK + self._board._capturedWHITE - self._board._nbWHITE - self._board._capturedBLACK
             else:
-                return -1*overallStatus + self._decimalPoint # self._board._nbWHITE + self._board._capturedBLACK - self._board._nbBLACK - self._board._capturedWHITE
+                return -1*overallStatus + (self._decimalPoint*random.randint(1,81)) # self._board._nbWHITE + self._board._capturedBLACK - self._board._nbBLACK - self._board._capturedWHITE
         else:
              return "NO_LEAF"
 
@@ -147,7 +147,7 @@ class myPlayer(PlayerInterface):
                 print("                                       [Player CSGO]                                                ")
                 print("                              Playing in Disturbed Opening Mode")
                 print("                                       [Player CSGO]                                                ")
-                moves = self._board.legal_moves() # Dont use weak_legal_moves() here!
+                moves = self._board.legal_moves()
                 move = choice(moves) 
                 self._board.push(move)
                 print("I am playing ", self._board.move_to_str(move))
@@ -160,7 +160,7 @@ class myPlayer(PlayerInterface):
                 print("                                       [Player CSGO]                                                ")
                 return Goban.Board.flat_to_name(move) 
         print("                                       [Player CSGO]                                                ")
-        print("                      Depth of AlphaBeta is ", self._actualDepth)
+        print("                                 Depth of AlphaBeta is ", self._actualDepth)
         print("                                       [Player CSGO]                                                ")
         if self._board.is_game_over():
             return "PASS" 
@@ -199,16 +199,16 @@ class myPlayer(PlayerInterface):
 
         if self._criticalMode==False and self._ultraCriticalMode==False:
             totalStones=self._board._nbBLACK + self._board._nbWHITE 
-            if self._actualDepth < 6 and (2*turnTime*(81-(totalStones+1)))<= (30*60)-self._totalTime:
+            if self._actualDepth < 5 and (turnTime*(81-(totalStones+1))+0.5*turnTime*(81-totalStones)**(self._actualDepth))<= (30*60)-self._totalTime:
                 self._actualDepth+=1
                 print("                                       [Player CSGO]                                                ")
-                print("                    Increasing depth of AlphaBeta to ",self._actualDepth)
+                print("                           Increasing depth of AlphaBeta to ",self._actualDepth)
                 print("                                       [Player CSGO]                                                ")
-            elif self._actualDepth > 2 and (turnTime*(81-(totalStones+1))) > 1.50*((30*60)-self._totalTime):
-                self._actualDepth-=1
-                print("                                       [Player CSGO]                                                ")
-                print("                    Decreasing depth of AlphaBeta to ",self._actualDepth)
-                print("                                       [Player CSGO]                                                ")
+            # elif self._actualDepth > 2 and (turnTime*(81-(totalStones+1))+0.2*turnTime*(81-totalStones)**(self._actualDepth)) > 10*((30*60)-self._totalTime):
+            #     self._actualDepth-=1
+            #     print("                                       [Player CSGO]                                                ")
+            #     print("                           Decreasing depth of AlphaBeta to ",self._actualDepth)
+            #     print("                                       [Player CSGO]                                                ")
             self.checkKillerMove()
         self._totalTime+=time.time()-diff
         print("                                       [Player CSGO]                                                ")
@@ -230,8 +230,3 @@ class myPlayer(PlayerInterface):
             print("CSGO won!!!")
         else:
             print("CSGO lost :(!!")
-
-
-
-# A FAIRE : 
-#   Trouver vraie heuristique (chercher degrés de liberté)

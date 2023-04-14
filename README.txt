@@ -45,16 +45,11 @@ Si un coup est illégal (déjà joué précedemment par l'opposant), l'I.A activ
 Celà a pour but de vite procéder à l'ouverture avant de commencer les "vrais" calculs.
 
 Vient ensuite un AlphaBeta classique, de profondeur 2.
-Pour calculer la profondeur du prochain coup :
-Si le temps que l'on a pris pour jouer ce coup est assez court pour que les prochains coups que l'on puisse jouer potentiellement
-nous laissent encore la moitié du temps imparti à cet instant, on augmente la profondeur de 1 dans la limite d'une profondeur de 6.
+Pour calculer la profondeur du prochain coup, on utilise la condition suivante pour augmenter la profondeur :
 
->>> if self._actualDepth < 6 and (2*turnTime*(81-(totalStones+1)))<= (30*60)-self._totalTime:
+>>> if self._actualDepth < 5 and (turnTime*(81-(totalStones+1))+0.5*turnTime*(81-totalStones)**(self._actualDepth))<= (30*60)-self._totalTime:
 
-Si le temps que l'on a pris pour jouer ce coup est trop long a tel point que si on jouait potentiellementà cette vitesse tout les prochains coups, on
-dépasserait de 50% du temps imparti à cet instant, alors on diminue la profondeur de 1 dans la limite d'une profondeur de 2.
-
->>> elif self._actualDepth > 2 and (turnTime*(81-(totalStones+1))) > 1.50*((30*60)-self._totalTime):
+Les coefficients utilisés sont été choisis à taton, mais l'utilisation du Machine Learning aurait été opportun ici!!
 
 On considère aussi deux modes de jeu important :
 
@@ -67,12 +62,17 @@ Il s'active lorsqu'il ne reste plus de 60 secondes. On force alors un AlphaBeta 
 Il s'active lorsqu'il ne reste plus de 10 secondes. On force alors un AlphaBeta de profondeur 1.
 
 Avec ce modèle, plus le board est rempli, plus on parcours profondément l'arbre de jeu, ce qui nous rend bon en fin de partie.
-Il y a malheureusement un faille. Si on arrive en profondeur 6, mais qu'une pierre capture une grande partie des pierres adverses,
+Il y a malheureusement un faille. Si on arrive en profondeur 5, mais qu'une pierre capture une grande partie des pierres adverses,
 alors le parcours sera extrèmement long puisque une branche sera extrèmement grande, ruinant le gain de temps.
 On effectue alors une vérification sur la première couche de l'arbre, pour vérifier qu'aucun des premiers moves ne capturera beaucoup d'adversaires.
 Si c'est le cas, on préfère alors une profondeur 3.
 Sinon, on continue.
 
-Au pire des cas, un gros coup apparaitra en deuxième couche, mais avec un AlphaBeta de profondeur 6, cela laissera maintenant 4 couches au pire à calculer,
+Au pire des cas, un gros coup apparaitra en deuxième couche, mais avec un AlphaBeta de profondeur 5, cela laissera maintenant 3 couches au pire à calculer,
 ce qu'on estime raisonnable en fin de partie.
+
+##### Tests #####
+
+La majorité des tests de fonctionnement ont été à la main contre le randomPlayer.py. Pour les tests de performance, CSGO est capable de battre aisément random.
+CSGO a aussi pu affronter d'autres IA d'autres équipes.
 
